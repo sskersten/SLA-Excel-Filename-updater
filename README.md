@@ -1,5 +1,5 @@
 # SLA Excel Filename updater
-## Saves you time with looking at tons of dates!
+### Saves you time with looking at tons of dates!
 For an SLA job at work, we have to have paperwork set up with a specific naming convention with dates that change every week. Doing that by hand is tedious, so I made a program to do it for me.
 
 An example of the file names is "Kersten, William - CSCI 1010 W1S Spring 2018 - Attendance 1-22 to 1-26". Everything in this filename will stay the same through one semester, except for the dates at the end. This program basically grabs those dates, adds 7 to them, and plaps 'em back in.
