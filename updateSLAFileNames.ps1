@@ -30,5 +30,27 @@ foreach ($file in $files) {
 		
 		#move whatever we copied to the Old_SLA_Files folder
 		move-item (".\"+$file+".xlsx") (".\Old_SLA_Files\"+$file+".xlsx") 
+
+        if ($newFilename.Contains("Lesson Plan")){
+            #Modify the Excel sheets with the new dates as well
+            $Excel = New-Object -ComObject Excel.Application
+            $ExcelWorkBook = $Excel.workbooks.Open((Convert-Path .) + "\" + $newFilename)
+            $ExcelWorkSheet = $Excel.WorkSheets.Item(1)
+            #$ExcelWorkSheet.activate()
+
+            ##modify values of a test cell
+            ##Change week date and current date
+            $ExcelWorkSheet.Cells.Item(4,7) = $newFilenameDates[0] + " to " + $newFilenameDates[1]
+            $ExcelWorkSheet.Cells.Item(4,13) = ((get-date -Date $originalFilenameDates[1].value).AddDays(-1)).ToString('M-d')
+            ##change workshop date cells
+            $ExcelWorkSheet.Cells.Item(8,9) = "Workshop Date: " + ((get-date -Date $originalFilenameDates[0].value).AddDays(7)).ToString('M-d')
+            $ExcelWorkSheet.Cells.Item(22,9) ="Workshop Date: " + ((get-date -Date $originalFilenameDates[1].value).AddDays(5)).ToString('M-d')
+
+            $ExcelWorkBook.Save()
+            $ExcelWorkBook.Close()
+            $Excel.Quit()
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($Excel)
+            Stop-Process -Name EXCEL -Force
+        }
 	} #end of If
 } #end of foreach
