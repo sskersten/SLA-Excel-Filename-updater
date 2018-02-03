@@ -1,36 +1,49 @@
-#The entire filename used in SLA Excel files
-$SLA_FILENAME_REGEXP = "\w*, \w* - \w* \w* \w* \w* \d* - (\w*|\w* \w*) \d{1,2}-\d{1,2} to \d{1,2}-\d{1,2}"
 #just the date portion of the filename
-$SLA_DATE_REGEXP = "\d{1,2}-\d{1,2} to \d{1,2}-\d{1,2}"
+$SINGLEDATE_REGEXP = "\d{1,2}-\d{1,2}"
+#The entire filename used in SLA Excel files
+$SLA_FILENAME_REGEXP = ("[\w\s]*" + $SINGLEDATE_REGEXP + " to " + $SINGLEDATE_REGEXP)
+#old files folder name
+$OLDFILES_FOLDER_NAME = ".\Old_SLA_Files"
 
 #get all of the filenames in the current directory
-$files = (dir *.xlsx).BaseName
-foreach ($file in $files) {
+$filenames = (dir *.xlsx).BaseName
+
+#If a file is an SLA file, convert the old date to the new date.
+foreach ($filename in $filenames) {
 	#make sure we only mess with SLA files
-	if ($file -match $SLA_FILENAME_REGEXP){
-		write-output $file
+	if ($filename -match $SLA_FILENAME_REGEXP){
 		
-		#get the original dates from the filename
-		$originalFilenameDates = [regex]::matches([string]$file, "\d{1,2}-\d{1,2}")
-		#make new dates from the old dates by adding 7 to them using the get-date object. Thanks MS!
+		#get the original dates from filenames and add 7 to them.
+		$originalFilenameDates = [regex]::matches([string]$filename, $SINGLEDATE_REGEXP)
 		$newFilenameDates = 
 			((get-date -Date $originalFilenameDates[0].value).AddDays(7)).ToString('M-d'),
 			((get-date -Date $originalFilenameDates[1].value).AddDays(7)).ToString('M-d')
 		
 		#setup new filenames by replacing the old dates with new dates
-		$newFilename = $file -replace $SLA_DATE_REGEXP, ($newFilenameDates[0] + " to " + $newFilenameDates[1])
+		$newFilename = $filename -replace $SINGLEDATE_REGEXP, ($newFilenameDates[0] + " to " + $newFilenameDates[1])
 		
 		#create a new version of the file with the new date in the filename
-		copy-item -Path (".\" + $file + ".xlsx") -Destination (".\" + $newFilename + ".xlsx")
-		
-		#if there's no Old_SLA_Files folder, make one
-		if (-NOT (Test-Path ".\Old_SLA_Files")) {
-			new-item .\Old_SLA_Files -type directory
+		copy-item -Path (".\" + $filename + ".xlsx") -Destination (".\" + $newFilename + ".xlsx")
+            
+        write-output ("Updated " + $filename + ".")		
+
+        #shove old files into a folder named after the week it's from
+        #if there's no Old_SLA_Files folder, make one
+		if (-NOT (Test-Path $OLDFILES_FOLDER_NAME)) {
+			new-item $OLDFILES_FOLDER_NAME -type directory
 		}
+
+        $oldFilesDumpFold = $OLDFILES_FOLDER_NAME + "\" + $originalFilenameDates[0].value
+        #if there's not a folder for the current week, make one
+        if (-NOT (Test-Path $oldFilesDumpFold)){
+            new-item $oldFilesDumpFold -type directory
+        }
 		
 		#move whatever we copied to the Old_SLA_Files folder
-		move-item (".\"+$file+".xlsx") (".\Old_SLA_Files\"+$file+".xlsx") 
+		move-item (".\"+$filename+".xlsx") ($oldFilesDumpFold + "\" +$filename + ".xlsx") 
 
+
+        #use e
         if ($newFilename.Contains("Lesson Plan")){
             #Modify the Excel sheets with the new dates as well
             $Excel = New-Object -ComObject Excel.Application
