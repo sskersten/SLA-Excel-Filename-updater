@@ -6,12 +6,22 @@ $SLA_FILENAME_REGEXP = ( $SINGLEDATE_REGEXP + " to " + $SINGLEDATE_REGEXP)
 $OLDFILES_FOLDER_NAME = ".\Old_SLA_Files"
 
 #get all of the filenames in the current directory
-$filenames = (dir *.xlsx).BaseName
+$filenames = (dir *).BaseName
 
 #If a file is an SLA file, convert the old date to the new date.
 foreach ($filename in $filenames) {
 	#make sure we only mess with SLA files
 	if ($filename -match $SLA_FILENAME_REGEXP){
+
+
+        $extension = ".xlsx";
+        #figure out extension
+        if ($filename.Contains("Lesson Plan")){
+        write-output ($filename + " is docx.")		
+            $extension = ".docx"
+        } 
+
+        write-output ($extension)	
 		
 		#get the original dates from filenames and add 7 to them.
 		$originalFilenameDates = [regex]::matches([string]$filename, $SINGLEDATE_REGEXP)
@@ -23,7 +33,7 @@ foreach ($filename in $filenames) {
 		$newFilename = $filename -replace $SLA_FILENAME_REGEXP, ($newFilenameDates[0] + " to " + $newFilenameDates[1])
 		
 		#create a new version of the file with the new date in the filename
-		copy-item -Path (".\" + $filename + ".xlsx") -Destination (".\" + $newFilename + ".xlsx")
+		copy-item -Path (".\" + $filename + $extension) -Destination (".\" + $newFilename + $extension)
         write-output ("Updated " + $filename + ".")		
 
         #shove old files into a folder named after the week it's from
@@ -39,45 +49,8 @@ foreach ($filename in $filenames) {
         }
 		
 		#move whatever we copied to the Old_SLA_Files folder
-		move-item (".\"+$filename+".xlsx") ($oldFilesDumpFold + "\" +$filename + ".xlsx") 
+		move-item (".\"+$filename+$extension) ($oldFilesDumpFold + "\" +$filename + $extension) 
 
 
-        #Update Lesson Plan Files
-        if ($newFilename.Contains("Lesson Plan")){
-            #Setup Excel sheet objects
-            $Excel = New-Object -ComObject Excel.Application
-            $ExcelWorkBook = $Excel.workbooks.Open((Convert-Path .) + "\" + $newFilename)
-            $ExcelWorkSheet = $Excel.WorkSheets.Item(1)
-            
-            ##Change week date and current date
-            $ExcelWorkSheet.Cells.Item(4,7)  = $newFilenameDates[0] + " to " + $newFilenameDates[1]
-            $ExcelWorkSheet.Cells.Item(4,13) = ((get-date -Date $originalFilenameDates[1].value).AddDays(-1)).ToString('M-d')
-
-            ##update individual workshop dates by using values in the cells already
-            $excel_date = $ExcelWorkSheet.Cells.Item(8,9).Text.Substring(15)
-            $excel_date = ((get-date -Date $excel_date).AddDays(7)).toString("MM-dd-yyyy")
-            $ExcelWorkSheet.Cells.Item(8,9) = ("Workshop Date: " + $excel_date)
-
-            $excel_date =  $ExcelWorkSheet.Cells.Item(22,9).Text.Substring(15)
-            $excel_date = ((get-date -Date $excel_date).AddDays(7)).toString("MM-dd-yyyy")
-            $ExcelWorkSheet.Cells.Item(22,9) = ("Workshop Date: " + $excel_date)
-
-            #update Activity Cells
-            $ExcelWorksheet.Cells.Item(9,9)  = "Activity:";
-            $ExcelWorksheet.Cells.Item(9,13) = "Time Required:"
-            $ExcelWorksheet.Cells.Item(14,9) = "Materials Required:"
-            $ExcelWorksheet.Cells.Item(17,9) = "How will this activty be linked to the course material:"
-            $ExcelWorksheet.Cells.Item(23,9) = "Activity:";
-            $ExcelWorksheet.Cells.Item(23,13)= "Time Required:"
-            $ExcelWorksheet.Cells.Item(28,9) = "Materials Required:"
-            $ExcelWorksheet.Cells.Item(31,9) = "How will this activty be linked to the course material:"
-
-            #quit Excel
-            $ExcelWorkBook.Save()
-            $ExcelWorkBook.Close()
-            $Excel.Quit()
-            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($Excel)
-            Stop-Process -Name EXCEL -Force
-        } #end of if Lesson Plan 
 	} #end of If SLA file
 } #end of foreach
